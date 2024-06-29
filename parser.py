@@ -19,7 +19,6 @@ def decode(key, encoded_text):
         decoded_text += charset[index]
     return decoded_text
 
-
 def parse(content):
     tasks = {}
     soup = BeautifulSoup(content, 'html.parser')
@@ -44,10 +43,10 @@ def parse(content):
     # parse others tasks
     for blob in blobs:
         tasks[blob['taskname']] = {
-            'assemblyfile': blob['assemblyfile'],
+            'filename': blob['assemblyfile'],
         }
 
-    # parse params
+    # parse task params
     for blob in re.findall(r'&lt;(?P<params>[\w\s=\"]+)/&gt;', str(soup.find('target')), re.I):
         taskname, *items = blob.split(' ')
         tasks[taskname]['params'] = {}
@@ -56,7 +55,6 @@ def parse(content):
             tasks[taskname]['params'][m.group('key')] = m.group('value')
 
     # parse assemblies
-    assemblies = []
     for blob in encoded_assemblies:
         parts = blob.split(':')
         if len(parts) == 2:
@@ -76,15 +74,15 @@ def parse(content):
 
         dotnet_file = DotNetPE(assembly)
 
-        assemblies.append({
-            'path': path,
-            'sha1': sha1.hexdigest(),
-            'assembly_name': dotnet_file.Assembly.get_assembly_name(),
-        })
-
-    #filename = PureWindowsPath(path).name
+        for task in tasks.values():
+            if task['filename'] == PureWindowsPath(path).name:
+                task.update({
+                    'path': path,
+                    'sha1': sha1.hexdigest(),
+                    'assembly_name': dotnet_file.Assembly.get_assembly_name(),
+                })
     
-    return batch, tasks, assemblies
+    return batch, utask, tasks
 
 
 if __name__ == '__main__':
@@ -95,6 +93,7 @@ if __name__ == '__main__':
     with open(args.path) as file:
         content = file.read()
 
-    batch, tasks, assemblies = parse(content)
-    #print(batch)
-    rich.print(assemblies)
+    batch, utask, tasks = parse(content)
+    print(batch)
+    print(utask)
+    rich.print(tasks)
