@@ -16,14 +16,6 @@ def decode(key, encoded_text):
     return decoded_text
 
 
-def parse_params(blob):
-    taskname, *parts = blob.split(' ')
-    
-    return taskname, _
-    #match = re.search(r'(?P<key>\w+)=\"(?P<value>[\da-f]+)\"', blob, re.I)
-    #return match.group('key'), match.group('value')
-
-
 def parse(content):
     tasks = {}
     soup = BeautifulSoup(content, 'html.parser')
