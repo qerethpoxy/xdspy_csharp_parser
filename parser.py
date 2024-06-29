@@ -5,6 +5,7 @@ from base64 import b64decode
 from bs4 import BeautifulSoup, CData, Comment
 from dotnetfile import DotNetPE
 import hashlib
+from pathlib import PureWindowsPath
 import re
 import rich
 
@@ -55,10 +56,11 @@ def parse(content):
             tasks[taskname]['params'][m.group('key')] = m.group('value')
 
     # parse assemblies
+    assemblies = []
     for blob in encoded_assemblies:
         parts = blob.split(':')
         if len(parts) == 2:
-            path = b64decode(parts[0])
+            path = b64decode(parts[0]).decode('utf-8')
             assembly = b64decode(parts[1])
 
         parts = blob.split('#')
@@ -66,7 +68,7 @@ def parse(content):
             key = int(parts[0])
             encoded_path = parts[1]
             encoded_assembly = parts[2]
-            path = b64decode(decode(key, encoded_path))
+            path = b64decode(decode(key, encoded_path)).decode('utf-8')
             assembly = b64decode(decode(key, encoded_assembly))
 
         sha1 = hashlib.sha1()
@@ -74,13 +76,15 @@ def parse(content):
 
         dotnet_file = DotNetPE(assembly)
 
-        x = {
+        assemblies.append({
             'path': path,
             'sha1': sha1.hexdigest(),
             'assembly_name': dotnet_file.Assembly.get_assembly_name(),
-        }
+        })
 
-    return batch, tasks
+    #filename = PureWindowsPath(path).name
+    
+    return batch, tasks, assemblies
 
 
 if __name__ == '__main__':
@@ -91,6 +95,6 @@ if __name__ == '__main__':
     with open(args.path) as file:
         content = file.read()
 
-    batch, tasks = parse(content)
-    print(batch)
-    rich.print(tasks)
+    batch, tasks, assemblies = parse(content)
+    #print(batch)
+    rich.print(assemblies)
