@@ -1,7 +1,7 @@
 # coding: utf-8
 
 import argparse
-from bs4 import BeautifulSoup, CData
+from bs4 import BeautifulSoup, CData, Comment
 import re
 import rich
 
@@ -19,6 +19,11 @@ def decode(key, encoded_text):
 def parse(content):
     tasks = {}
     soup = BeautifulSoup(content, 'html.parser')
+
+    code, *encoded_assemblies = soup.find_all(string=lambda tag: isinstance(tag, Comment))
+
+    # parse  batch
+    batch = '\n'.join(line for line in code.splitlines()[1:] if not line.startswith('::'))
 
     utask, *blobs = soup.find_all('usingtask')
 
@@ -46,7 +51,12 @@ def parse(content):
             m = re.search(r'(?P<key>\w+)=\"(?P<value>[\da-f]+)\"', item, re.I)
             tasks[taskname]['params'][m.group('key')] = m.group('value')
 
-    return tasks
+    # parse assemblies
+    for blob in encoded_assemblies:
+        pass
+
+    return batch, tasks
+
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
@@ -56,5 +66,6 @@ if __name__ == '__main__':
     with open(args.path) as file:
         content = file.read()
 
-    result = parse(content)
-    rich.print(result)
+    batch, tasks = parse(content)
+    print(batch)
+    rich.print(tasks)
