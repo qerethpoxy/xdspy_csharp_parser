@@ -1,7 +1,10 @@
 # coding: utf-8
 
 import argparse
+from base64 import b64decode
 from bs4 import BeautifulSoup, CData, Comment
+from dotnetfile import DotNetPE
+import hashlib
 import re
 import rich
 
@@ -53,7 +56,29 @@ def parse(content):
 
     # parse assemblies
     for blob in encoded_assemblies:
-        pass
+        parts = blob.split(':')
+        if len(parts) == 2:
+            path = b64decode(parts[0])
+            assembly = b64decode(parts[1])
+
+        parts = blob.split('#')
+        if len(parts) == 3:
+            key = int(parts[0])
+            encoded_path = parts[1]
+            encoded_assembly = parts[2]
+            path = b64decode(decode(key, encoded_path))
+            assembly = b64decode(decode(key, encoded_assembly))
+
+        sha1 = hashlib.sha1()
+        sha1.update(assembly)
+
+        dotnet_file = DotNetPE(assembly)
+
+        x = {
+            'path': path,
+            'sha1': sha1.hexdigest(),
+            'assembly_name': dotnet_file.Assembly.get_assembly_name(),
+        }
 
     return batch, tasks
 
