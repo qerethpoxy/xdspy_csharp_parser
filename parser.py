@@ -56,12 +56,12 @@ def parse(content):
 
     # parse task params
     for blob in re.findall(r'&lt;(?P<params>[\w\s=\"]+)/&gt;', str(soup.find('target')), re.I):
-        taskname, *items = blob.split(' ')
+        taskname, *parts = blob.split(' ')
         encrypted_strings = []
         tasks[taskname]['params'] = {}
         tasks[taskname]['decrypted_strings'] = []
-        for item in items[:-1]:
-            m = re.search(r'(?P<key>\w+)=\"(?P<value>[\da-f]+)\"', item, re.I)
+        for part in parts[:-1]:
+            m = re.search(r'(?P<key>\w+)=\"(?P<value>[\da-f]+)\"', part, re.I)
             key = m.group('key')
             value = m.group('value')
             tasks[taskname]['params'][key] = value
