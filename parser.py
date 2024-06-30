@@ -5,9 +5,16 @@ from base64 import b64decode
 from bs4 import BeautifulSoup, CData, Comment
 from dotnetfile import DotNetPE
 import hashlib
+from itertools import cycle
 from pathlib import PureWindowsPath
 import re
 import rich
+
+
+def decrypt_text(key, encrypted_string):
+    b_key = bytearray.fromhex(key)
+    b_encrypted_string = bytearray.fromhex(encrypted_string)
+    return ''.join(chr(byte ^ key_byte) for byte, key_byte in zip(cycle(b_key), b_encrypted_string))
 
 
 def decode(key, encoded_text):
@@ -18,6 +25,7 @@ def decode(key, encoded_text):
         index = (index - key + 65 if index - key < 0 else index - key) % 65
         decoded_text += charset[index]
     return decoded_text
+
 
 def parse(content):
     tasks = {}
@@ -49,10 +57,20 @@ def parse(content):
     # parse task params
     for blob in re.findall(r'&lt;(?P<params>[\w\s=\"]+)/&gt;', str(soup.find('target')), re.I):
         taskname, *items = blob.split(' ')
+        encrypted_strings = []
         tasks[taskname]['params'] = {}
+        tasks[taskname]['decrypted_strings'] = []
         for item in items[:-1]:
             m = re.search(r'(?P<key>\w+)=\"(?P<value>[\da-f]+)\"', item, re.I)
-            tasks[taskname]['params'][m.group('key')] = m.group('value')
+            key = m.group('key')
+            value = m.group('value')
+            tasks[taskname]['params'][key] = value
+            if len(value) == 32:
+                tasks[taskname]['xor_key'] = value
+            else:
+                encrypted_strings.append(value)
+
+        tasks[taskname]['decrypted_strings'] = [decrypt_text(tasks[taskname]['xor_key'], s) for s in encrypted_strings]
 
     # parse assemblies
     for blob in encoded_assemblies:
@@ -81,7 +99,7 @@ def parse(content):
                     'sha1': sha1.hexdigest(),
                     'assembly_name': dotnet_file.Assembly.get_assembly_name(),
                 })
-    
+
     return batch, utask, tasks
 
 
